@@ -90,51 +90,126 @@ npm run lint
 
 ---
 
-## Architecture & library choices
+## Project tree
 
-### Folder layout (high level)
+Repository layout (excluding `node_modules`, `ios/Pods`, and build outputs):
 
-| Area | Role |
-| --- | --- |
-| `src/app/` | App shell: Redux store, root sagas, navigation container, bootstrap (`useAppBootstrap`), typed hooks |
-| `src/features/` | Feature UI + hooks (e.g. logs list/add-edit, settings) |
-| `src/domain/` | Entities, use cases, repository ports — framework-agnostic |
-| `src/data/` | SQLite DAOs, migrations, API clients, repository implementations |
-| `src/services/` | Cross-cutting services (e.g. outbox sync engine, background scheduling) |
-| `src/ui/` | Shared UI primitives, theme, tokens, navigation helpers |
-| `src/config/` | Env-driven config |
-| `src/libs/` | i18n, logging, network helpers |
+```text
+farming/
+├── App.tsx                    # Root component (providers, root navigator)
+├── index.js                   # Metro entry
+├── package.json
+├── babel.config.js            # Env injection + path aliases (@app, @data, …)
+├── metro.config.js
+├── tsconfig.json
+├── android/                   # Gradle project, product flavors (dev / uat / prod)
+├── ios/                       # Xcode workspace `farming.xcworkspace`, app target `farming/`
+├── src/
+│   ├── app/                   # Application shell
+│   │   ├── components/
+│   │   ├── hooks/             # e.g. useAppBootstrap (DB, i18n, sync bootstrap)
+│   │   ├── navigation/        # Root navigator, stacks, drawer
+│   │   └── store/             # Redux store, rootSaga, dependencies wiring
+│   ├── config/                # Env-driven settings (e.g. logs HTTP)
+│   ├── data/                  # Infrastructure
+│   │   ├── api/               # REST clients (e.g. logs)
+│   │   ├── db/                # SQLite open, DAOs, migrations
+│   │   ├── mocks/
+│   │   └── repository/        # Port implementations
+│   ├── domain/                # Business core
+│   │   ├── entities/
+│   │   ├── policies/
+│   │   ├── ports/             # Repository / remote interfaces
+│   │   └── usecases/
+│   ├── features/              # Product features (screens, hooks, slice, saga)
+│   │   ├── logs/              # components/, hooks/, screens/, sagas/, store/
+│   │   └── settings/
+│   ├── libs/                  # Cross-cutting helpers (i18n, logger, network, theme)
+│   ├── locales/               # i18n JSON (en, vi, …)
+│   ├── services/              # Background + sync orchestration
+│   │   ├── background/
+│   │   └── sync/              # Outbox engine, job handlers, backoff
+│   └── ui/                    # Design system
+│       ├── components/
+│       ├── navigation/
+│       ├── theme/
+│       └── tokens/
+├── docs/                      # Requirements / notes
+├── scripts/                   # Tooling (icons, DB export, schema migrate, …)
+├── assets/                    # e.g. bootsplash assets
+├── patches/                   # patch-package diffs
+└── __tests__/                 # Jest tests (use cases, sync, components, …)
+```
 
-This keeps **UI → state → use cases → persistence/API** in one direction and makes testing and swapping implementations easier.
+Path aliases (see `babel.config.js` / `tsconfig.json`): `@app`, `@config`, `@data`, `@domain`, `@features`, `@libs`, `@services`, `@ui`.
 
-### State & async
+---
 
-- **Redux Toolkit** for a single predictable store and actions.
-- **redux-saga** for side effects (load/save logs, sync triggers) as required by the brief.
+## ARCHITECTURE
 
-### Data & offline
+### Layered model
 
-- **react-native-sqlite-storage** for local persistence and migrations.
-- **Outbox-style sync** (`src/services/sync/`) plus **NetInfo**-aware bootstrap so writes are local-first and remote sync is best-effort when online.
+Dependencies point **inward**: outer layers may call inner ones; domain does not depend on React or SQLite.
 
-### Navigation & UI
+| Layer | Folders | Responsibility |
+| --- | --- | --- |
+| **Presentation** | `src/features/`, `src/ui/`, `src/app/navigation/` | Screens, hooks tied to UI, shared components & theme |
+| **Application state** | `src/app/store/`, `src/features/*/{store,sagas}/` | Redux store, root saga; feature slices & sagas → use cases |
+| **Domain** | `src/domain/` | Entities, use cases, ports (interfaces) |
+| **Infrastructure** | `src/data/`, `src/services/` | SQLite, HTTP, outbox sync, background triggers |
+| **Cross-cutting** | `src/libs/`, `src/config/` | i18n, logging, NetInfo bootstrap, env config |
 
-- **React Navigation** (drawer + native stack) for structure and deep linking readiness.
-- **react-native-paper** + internal theme/tokens for a consistent Material-oriented UI without scattering raw styles everywhere.
+### Runtime data flow (simplified)
 
-### Forms & validation
+```mermaid
+flowchart LR
+  subgraph ui [Presentation]
+    Screens[Features screens]
+    Nav[React Navigation]
+  end
+  subgraph app [App shell]
+    Boot[useAppBootstrap]
+    Store[Redux store]
+    Saga[redux-saga]
+  end
+  subgraph dom [Domain]
+    UC[Use cases]
+    Ports[Repository ports]
+  end
+  subgraph infra [Infrastructure]
+    Repo[Repository implementations]
+    DB[(SQLite)]
+    API[Logs HTTP API]
+    Sync[Outbox sync engine]
+  end
+  Screens --> Store
+  Nav --> Screens
+  Boot --> DB
+  Boot --> Sync
+  Store --> Saga
+  Saga --> UC
+  UC --> Ports
+  Repo --> Ports
+  Repo --> DB
+  Repo --> API
+  Saga --> Sync
+  Sync --> API
+```
 
-- **react-hook-form** + **Zod** for typed, validated add/edit log flows.
+Typical **write path**: screen → dispatch action → saga → use case → repository → SQLite first → enqueue sync job when online. **Read path**: saga or bootstrap → use case → repository → SQLite → store → UI.
 
-### i18n
+### Tech stack (library choices)
 
-- **i18next** / **react-i18next** with JSON resources under `src/locales/` (e.g. Vietnamese + English).
-
-### Other notable libraries
-
-- **Reanimated** / **Gesture Handler** / **Screens** — navigation and animation performance.
-- **react-native-bootsplash** — native splash integration.
-- **patch-package** — small locked fixes to dependencies (`postinstall`).
+- **State:** Redux Toolkit + **redux-saga** (side effects, sync triggers).
+- **Persistence:** **react-native-sqlite-storage** + versioned migrations under `src/data/db/migrations/`.
+- **Sync:** **Outbox-style** pipeline in `src/services/sync/`, **NetInfo** in `src/libs/network/` for connectivity-aware behavior.
+- **Navigation:** **React Navigation** (drawer + native stack).
+- **UI:** **react-native-paper** + `src/ui/theme` & tokens.
+- **Forms:** **react-hook-form** + **Zod**.
+- **i18n:** **i18next** / **react-i18next**, resources in `src/locales/`.
+- **Motion / native perf:** Reanimated, Gesture Handler, Screens.
+- **Splash:** react-native-bootsplash.
+- **Patches:** `patch-package` on `postinstall`.
 
 ---
 
