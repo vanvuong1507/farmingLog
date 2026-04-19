@@ -1,97 +1,163 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# Farming Log
 
-# Getting Started
+React Native mini-app for farmers to log daily field activities. Built offline-first: data is stored locally and sync runs when the network allows.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+---
 
-## Step 1: Start Metro
+## Prerequisites (environment)
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+| Tool | Version / notes |
+| --- | --- |
+| **Node.js** | **>= 22.11.0** (see `package.json` → `engines`) |
+| **Package manager** | npm or Yarn (examples below use `npm`) |
+| **Watchman** (macOS, recommended) | [Install Watchman](https://facebook.github.io/watchman/docs/install) for reliable Metro file watching |
+| **iOS** | **Xcode** (recent stable, aligned with React Native 0.85), **CocoaPods**, **iOS 15.1+** deployment target |
+| **Android** | **Android Studio** with **SDK 36**, **JDK 17** (typical for current AGP / RN), **minSdk 24** |
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+Also follow the official guide: [Set up your environment](https://reactnative.dev/docs/set-up-your-environment).
+
+---
+
+## Install
+
+1. Clone the repository and install JS dependencies:
+
+   ```sh
+   cd farming
+   npm install
+   ```
+
+2. **iOS — CocoaPods** (first clone and whenever native dependencies change):
+
+   ```sh
+   cd ios
+   pod install
+   cd ..
+   ```
+
+3. **Environment files** — the app uses `APP_ENV` (`development` \| `uat` \| `production`) and loads `.env.<APP_ENV>` at build time via Babel (see `babel.config.js`). Ensure `.env.development`, `.env.uat`, etc. exist locally (they are not committed if ignored by git; copy from your team’s secrets template if applicable).
+
+---
+
+## Run the app
+
+Start Metro in one terminal (pick the environment you need):
 
 ```sh
-# Using npm
-npm start
-
-# OR using Yarn
-yarn start
+npm start                 # APP_ENV=development (default)
+npm run start:uat         # APP_ENV=uat
+npm run start:production  # APP_ENV=production
 ```
 
-## Step 2: Build and run your app
-
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+In another terminal, run the native app.
 
 ### Android
 
 ```sh
-# Using npm
-npm run android
+npm run android           # dev debug
+npm run android:uat       # uat debug
+npm run android:prod      # production debug
+```
 
-# OR using Yarn
-yarn android
+Release-style builds (examples):
+
+```sh
+npm run android:release:dev
+npm run android:release:uat
+npm run android:release:prod
 ```
 
 ### iOS
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
-
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
-
 ```sh
-bundle install
+npm run ios               # development
+npm run ios:uat           # uat
+npm run ios:production    # production (debug)
+npm run ios:production:release
 ```
 
-Then, and every time you update your native dependencies, run:
+You can also open `ios/farming.xcworkspace` in Xcode or the `android` folder in Android Studio and run from the IDE.
+
+---
+
+## Tests & quality
 
 ```sh
-bundle exec pod install
+npm test
+npm run test:coverage
+npm run lint
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+---
 
-```sh
-# Using npm
-npm run ios
+## Architecture & library choices
 
-# OR using Yarn
-yarn ios
-```
+### Folder layout (high level)
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+| Area | Role |
+| --- | --- |
+| `src/app/` | App shell: Redux store, root sagas, navigation container, bootstrap (`useAppBootstrap`), typed hooks |
+| `src/features/` | Feature UI + hooks (e.g. logs list/add-edit, settings) |
+| `src/domain/` | Entities, use cases, repository ports — framework-agnostic |
+| `src/data/` | SQLite DAOs, migrations, API clients, repository implementations |
+| `src/services/` | Cross-cutting services (e.g. outbox sync engine, background scheduling) |
+| `src/ui/` | Shared UI primitives, theme, tokens, navigation helpers |
+| `src/config/` | Env-driven config |
+| `src/libs/` | i18n, logging, network helpers |
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+This keeps **UI → state → use cases → persistence/API** in one direction and makes testing and swapping implementations easier.
 
-## Step 3: Modify your app
+### State & async
 
-Now that you have successfully run the app, let's make changes!
+- **Redux Toolkit** for a single predictable store and actions.
+- **redux-saga** for side effects (load/save logs, sync triggers) as required by the brief.
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+### Data & offline
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+- **react-native-sqlite-storage** for local persistence and migrations.
+- **Outbox-style sync** (`src/services/sync/`) plus **NetInfo**-aware bootstrap so writes are local-first and remote sync is best-effort when online.
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+### Navigation & UI
 
-## Congratulations! :tada:
+- **React Navigation** (drawer + native stack) for structure and deep linking readiness.
+- **react-native-paper** + internal theme/tokens for a consistent Material-oriented UI without scattering raw styles everywhere.
 
-You've successfully run and modified your React Native App. :partying_face:
+### Forms & validation
 
-### Now what?
+- **react-hook-form** + **Zod** for typed, validated add/edit log flows.
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+### i18n
 
-# Troubleshooting
+- **i18next** / **react-i18next** with JSON resources under `src/locales/` (e.g. Vietnamese + English).
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+### Other notable libraries
 
-# Learn More
+- **Reanimated** / **Gesture Handler** / **Screens** — navigation and animation performance.
+- **react-native-bootsplash** — native splash integration.
+- **patch-package** — small locked fixes to dependencies (`postinstall`).
 
-To learn more about React Native, take a look at the following resources:
+---
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+## Improvements / future enhancements
+
+- **True remote API** — replace or extend the mock `LogsApi` with a real backend, auth, and conflict resolution policies.
+- **Richer sync UX** — per-item sync state, retry UI, and clearer error surfaces when sync fails after backoff.
+- **Observability** — structured remote logging / crash reporting in non-dev builds.
+- **Accessibility** — audit labels, focus order, and dynamic type on key screens.
+- **E2E tests** — Detox or Maestro for critical flows (add log → offline → sync).
+- **CI** — lint, unit tests, and optional Android/iOS build jobs on every PR.
+
+---
+
+## Troubleshooting
+
+- **Metro / cache**: `npx react-native start --reset-cache`
+- **iOS build issues**: clean build folder in Xcode, delete Derived Data, then `cd ios && pod install`
+- **React Native setup**: [Troubleshooting](https://reactnative.dev/docs/troubleshooting)
+
+---
+
+## Learn more
+
+- [React Native documentation](https://reactnative.dev/docs/getting-started)
+# farmingLog
