@@ -1,45 +1,85 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, {useEffect} from 'react';
+import {StyleSheet, View} from 'react-native';
+import BootSplash from 'react-native-bootsplash';
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {SafeAreaProvider, SafeAreaView} from 'react-native-safe-area-context';
+import {Provider} from 'react-redux';
+import {store} from '@app/store/store';
+import {ThemeNavigationContainer} from '@app/navigation/ThemeNavigationContainer';
+import {RootNavigator} from '@app/navigation/RootNavigator';
+import {ErrorBoundary} from '@app/ErrorBoundary';
+import {DbBootstrapError} from '@app/components/DbBootstrapError';
+import {AppBootPhase, useAppBootstrap} from '@app/hooks/useAppBootstrap';
+import {ThemeProvider} from '@ui/theme';
+import {useTheme} from 'react-native-paper';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+const AppContent = () => {
+  const paperTheme = useTheme();
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  return (
+    <SafeAreaView
+      style={[styles.root, {backgroundColor: paperTheme.colors.background}]}>
+      <GestureHandlerRootView style={styles.navContainer}>
+        <RootNavigator />
+      </GestureHandlerRootView>
+    </SafeAreaView>
+  );
+};
+
+const SPLASH_BG = '#1B5E20';
+
+function App(): React.JSX.Element {
+  const boot = useAppBootstrap();
+
+  useEffect(() => {
+    if (boot.phase === AppBootPhase.Loading) {
+      return;
+    }
+    BootSplash.hide({fade: true}).catch(() => {});
+  }, [boot.phase]);
+
+  if (boot.phase === AppBootPhase.Loading) {
+    return (
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <View style={styles.bootSplashPlaceholder} />
+        </ThemeProvider>
+      </SafeAreaProvider>
+    );
+  }
+
+  if (boot.phase === AppBootPhase.Error && boot.errorMessage != null) {
+    return (
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <DbBootstrapError
+            message={boot.errorMessage}
+            onRetry={boot.retry}
+          />
+        </ThemeProvider>
+      </SafeAreaProvider>
+    );
+  }
 
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <Provider store={store}>
+        <ThemeProvider>
+          <ErrorBoundary>
+            <ThemeNavigationContainer>
+              <AppContent />
+            </ThemeNavigationContainer>
+          </ErrorBoundary>
+        </ThemeProvider>
+      </Provider>
     </SafeAreaProvider>
   );
 }
 
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  root: {flex: 1},
+  bootSplashPlaceholder: {flex: 1, backgroundColor: SPLASH_BG},
+  navContainer: {flex: 1},
 });
 
 export default App;

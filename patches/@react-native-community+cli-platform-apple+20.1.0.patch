@@ -1,0 +1,15 @@
+diff --git a/node_modules/@react-native-community/cli-platform-apple/build/commands/buildCommand/buildProject.js b/node_modules/@react-native-community/cli-platform-apple/build/commands/buildCommand/buildProject.js
+index 1872c2f..6e556ad 100644
+--- a/node_modules/@react-native-community/cli-platform-apple/build/commands/buildCommand/buildProject.js
++++ b/node_modules/@react-native-community/cli-platform-apple/build/commands/buildCommand/buildProject.js
+@@ -56,7 +56,9 @@ function buildProject(xcodeProject, platform, udid, mode, scheme, args) {
+     const isDevice = args.device;
+     let destination = '';
+     if (udid) {
+-      destination = `id=${udid}`;
++      // xcodebuild on recent Xcode requires an explicit simulator platform when
++      // targeting a simulator UDID; bare `id=` can fail with exit code 70.
++      destination = isDevice ? `id=${udid}` : `platform=${simulatorDest},id=${udid}`;
+     } else if (isDevice) {
+       destination = 'generic/platform=iOS';
+     } else if (mode === 'Debug') {

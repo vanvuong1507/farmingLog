@@ -35,6 +35,10 @@ local.properties
 !debug.keystore
 .kotlin/
 
+# Env overrides (secrets / machine-local) — keep tracked templates: .env.* except *.local
+.env.local
+.env.*.local
+
 # node.js
 #
 node_modules/
@@ -73,3 +77,9 @@ yarn-error.log
 !.yarn/releases
 !.yarn/sdks
 !.yarn/versions
+
+#docs
+docs/
+
+#cursor
+.cursor/

@@ -2,6 +2,7 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
+import RNBootSplash
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -34,8 +35,14 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
-  override func sourceURL(for bridge: RCTBridge) -> URL? {
-    self.bundleURL()
+  override func createRootView(
+    with bridge: RCTBridge,
+    moduleName: String,
+    initProps: [AnyHashable: Any]?
+  ) -> UIView {
+    let rootView = super.createRootView(with: bridge, moduleName: moduleName, initProps: initProps ?? [:])
+    RNBootSplash.initWithStoryboard("BootSplash", rootView: rootView)
+    return rootView
   }
 
   override func bundleURL() -> URL? {

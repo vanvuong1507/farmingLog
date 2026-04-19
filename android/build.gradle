@@ -8,6 +8,10 @@ buildscript {
         kotlinVersion = "2.1.20"
     }
     repositories {
+        // Async Storage v3 ships org.asyncstorage.shared_storage:storage-android only in this local Maven repo.
+        maven {
+            url(uri("${rootDir}/../node_modules/@react-native-async-storage/async-storage/android/local_repo"))
+        }
         google()
         mavenCentral()
     }
@@ -19,3 +23,11 @@ buildscript {
 }
 
 apply plugin: "com.facebook.react.rootproject"
+
+allprojects {
+    repositories {
+        maven {
+            url(uri("${rootDir}/../node_modules/@react-native-async-storage/async-storage/android/local_repo"))
+        }
+    }
+}

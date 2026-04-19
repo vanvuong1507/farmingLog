@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect
+    x="6"
+    y="6"
+    width="188"
+    height="188"
+    rx="40"
+    fill="#FFFFFF"
+    fill-opacity="0.98" />
+  <!-- Thân F quanh x=100; thanh ngang rộng để nhìn rõ trên launcher -->
+  <path
+    fill="#1B5E20"
+    d="M 72 20 L 182 20 L 182 58 L 128 58 L 128 80 L 174 80 L 174 120 L 128 120 L 128 180 L 72 180 Z" />
+</svg>

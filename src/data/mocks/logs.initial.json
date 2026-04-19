@@ -1,0 +1,34 @@
+{
+  "version": "1.0.0",
+  "source": "local-seed",
+  "generatedAt": "2026-04-17T00:00:00.000Z",
+  "items": [
+    {
+      "id": "seed-001",
+      "activityName": "Seeding",
+      "date": "2026-04-15",
+      "notes": "Corn field A, row spacing calibrated.",
+      "status": "completed",
+      "syncStatus": "synced",
+      "updatedAt": 1776400000000
+    },
+    {
+      "id": "seed-002",
+      "activityName": "Fertilizing",
+      "date": "2026-04-16",
+      "notes": "NPK mix applied before rainfall.",
+      "status": "pending",
+      "syncStatus": "pending",
+      "updatedAt": 1776486400000
+    },
+    {
+      "id": "seed-003",
+      "activityName": "Harvesting",
+      "date": "2026-04-17",
+      "notes": "Pilot harvest zone, moisture checked.",
+      "status": "pending",
+      "syncStatus": "pending",
+      "updatedAt": 1776572800000
+    }
+  ]
+}
